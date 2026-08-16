@@ -5,30 +5,56 @@ export var gravity: float = 24.0
 export var jump_force: float = 8.5
 export var mouse_sensitivity: float = 0.002
 
+# Footstep Configuration
+export var step_interval: float = 0.42  # Time between steps (in seconds)
+var step_timer: float = 0.0
+
+# ADS & Recoil Configuration
+export var ads_speed: float = 14.0
+export var recoil_recovery_speed: float = 12.0
+
+# Define your Hip and ADS resting positions
+var hip_pos: Vector3 = Vector3(3.293, -2.561, -2.504)
+var ads_pos: Vector3 = Vector3(0.0, -2.561, -2.504)   # Centered horizontally at X = 0
+
+# Recoil offsets
+var target_gun_pos: Vector3 = Vector3.ZERO
+var current_recoil: Vector3 = Vector3.ZERO
+
+# Fire rate control
+var fire_rate: float = 0.15
+var fire_timer: float = 0.0
+
 var velocity: Vector3 = Vector3.ZERO
 
 onready var head: Spatial = $Head
 onready var camera: Camera = $Head/Camera
 onready var flashlight: Spatial = $Head/Camera/Flashlight
 onready var flashlight_audio: AudioStreamPlayer = $Head/Camera/FlashlightSound
+onready var gun_anchor: Spatial = $Head/Camera/revolverAnchor
+onready var shoot_audio: AudioStreamPlayer = $Head/Camera/revolverAnchor/revolverSound
+onready var footstep_audio: AudioStreamPlayer = $FootstepSound
 
 func _ready() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+	gun_anchor.translation = hip_pos
+	target_gun_pos = hip_pos
 
 func _unhandled_input(event: InputEvent) -> void:
+	# Mouse look
 	if event is InputEventMouseMotion and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
-		# Rotate body horizontally (yaw)
-		rotate_y(-event.relative.x * mouse_sensitivity)
-		# Rotate head vertically (pitch)
-		head.rotate_x(-event.relative.y * mouse_sensitivity)
-		# Clamp vertical view angle so the camera doesn't flip
+		# Lower sensitivity slightly when aiming for better precision
+		var sens_modifier = 0.6 if Input.is_action_pressed("aim") else 1.0
+		rotate_y(-event.relative.x * mouse_sensitivity * sens_modifier)
+		head.rotate_x(-event.relative.y * mouse_sensitivity * sens_modifier)
 		head.rotation.x = clamp(head.rotation.x, deg2rad(-89), deg2rad(89))
 
-	if event.is_action_pressed("flashlight"):
+	# Flashlight Toggle (F)
+	if event.is_action_pressed("flashlight") and not event.is_echo():
 		flashlight.visible = not flashlight.visible
 		flashlight_audio.play()
 
-	# Press Escape to release the mouse cursor
+	# Release/Capture Mouse Cursor
 	if event.is_action_pressed("ui_cancel"):
 		if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
 			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
@@ -36,8 +62,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
 func _physics_process(delta: float) -> void:
+	# Movement input
 	var input_dir: Vector3 = Vector3.ZERO
-
 	if Input.is_action_pressed("ui_up"):
 		input_dir -= transform.basis.z
 	if Input.is_action_pressed("ui_down"):
@@ -48,8 +74,6 @@ func _physics_process(delta: float) -> void:
 		input_dir += transform.basis.x
 
 	input_dir = input_dir.normalized()
-
-	# Horizontal movement
 	velocity.x = input_dir.x * speed
 	velocity.z = input_dir.z * speed
 
@@ -57,9 +81,55 @@ func _physics_process(delta: float) -> void:
 	if not is_on_floor():
 		velocity.y -= gravity * delta
 	else:
-		velocity.y = -0.1 # Slight downward force to keep floor contact
+		velocity.y = -0.1
 		if Input.is_action_just_pressed("jump"):
 			velocity.y = jump_force
 
-	# Move with floor snap & slope handling
 	velocity = move_and_slide(velocity, Vector3.UP, true)
+
+	# Footsteps logic: only tick when on the ground and moving
+	var horizontal_velocity = Vector2(velocity.x, velocity.z)
+	if is_on_floor() and horizontal_velocity.length() > 0.5:
+		step_timer -= delta
+		if step_timer <= 0.0:
+			play_footstep()
+			step_timer = step_interval
+	else:
+		# Reset timer when stopped so the step plays promptly on move
+		step_timer = 0.0
+
+func _process(delta: float) -> void:
+	# Fire rate cooldown
+	if fire_timer > 0.0:
+		fire_timer -= delta
+
+	# Shoot input
+	if Input.is_action_pressed("shoot") and fire_timer <= 0.0:
+		shoot()
+
+	# Handle Aim Down Sights (ADS)
+	if Input.is_action_pressed("aim"):
+		target_gun_pos = ads_pos
+	else:
+		target_gun_pos = hip_pos
+
+	# Smoothly recover recoil back to zero
+	current_recoil = current_recoil.linear_interpolate(Vector3.ZERO, recoil_recovery_speed * delta)
+
+	# Smoothly interpolate gun anchor position towards target + recoil
+	var final_target = target_gun_pos + current_recoil
+	gun_anchor.translation = gun_anchor.translation.linear_interpolate(final_target, ads_speed * delta)
+
+func shoot() -> void:
+	fire_timer = fire_rate
+	
+	# Play sound (with slight pitch variation for realism)
+	shoot_audio.pitch_scale = rand_range(0.95, 1.05)
+	shoot_audio.play()
+
+	# Recoil kick: pushes gun back (+Z) and slightly up (+Y)
+	current_recoil += Vector3(rand_range(-0.01, 0.9), 0.03, 0.9)
+
+func play_footstep() -> void:
+	footstep_audio.pitch_scale = rand_range(0.88, 1.12)
+	footstep_audio.play()
