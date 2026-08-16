@@ -1,6 +1,6 @@
 extends KinematicBody
 
-export var speed: float = 12.0
+export var speed: float = 15.0
 export var gravity: float = 24.0
 export var jump_force: float = 8.5
 export var mouse_sensitivity: float = 0.002
@@ -15,7 +15,7 @@ export var recoil_recovery_speed: float = 12.0
 
 # Define your Hip and ADS resting positions
 var hip_pos: Vector3 = Vector3(3.293, -2.561, -2.504)
-var ads_pos: Vector3 = Vector3(0.0, -2.561, -2.504)   # Centered horizontally at X = 0
+var ads_pos: Vector3 = Vector3(0.0, -1.45, -2.504)   # Centered horizontally at X = 0
 
 # Recoil offsets
 var target_gun_pos: Vector3 = Vector3.ZERO
@@ -34,6 +34,7 @@ onready var flashlight_audio: AudioStreamPlayer = $Head/Camera/FlashlightSound
 onready var gun_anchor: Spatial = $Head/Camera/revolverAnchor
 onready var shoot_audio: AudioStreamPlayer = $Head/Camera/revolverAnchor/revolverSound
 onready var footstep_audio: AudioStreamPlayer = $FootstepSound
+onready var interact_ray: RayCast = $Head/Camera/InteractRay
 
 func _ready() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
@@ -60,6 +61,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 		else:
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+			
+	if event.is_action_pressed("interact") and not event.is_echo():
+		check_interaction()
 
 func _physics_process(delta: float) -> void:
 	# Movement input
@@ -133,3 +137,14 @@ func shoot() -> void:
 func play_footstep() -> void:
 	footstep_audio.pitch_scale = rand_range(0.88, 1.12)
 	footstep_audio.play()
+
+func check_interaction() -> void:
+	if interact_ray.is_colliding():
+		var target = interact_ray.get_collider()
+		
+		# Check if the collided object has an interact method
+		if target.has_method("interact"):
+			target.interact(self)
+		# Or if its parent handles the interaction (common for doors/consoles)
+		elif target.get_parent().has_method("interact"):
+			target.get_parent().interact(self)
