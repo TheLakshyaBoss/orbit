@@ -1,4 +1,4 @@
-[gd_scene load_steps=23 format=2]
+[gd_scene load_steps=24 format=2]
 
 [ext_resource path="res://Blender/Side Walls.material" type="Material" id=1]
 [ext_resource path="res://Blender/Sci-Fi Module type4.material" type="Material" id=2]
@@ -15,6 +15,7 @@
 [ext_resource path="res://Sounds/footstep.wav" type="AudioStream" id=13]
 [ext_resource path="res://Blender/Table/Wood Veneer Walnut.material" type="Material" id=14]
 [ext_resource path="res://Images/crosshair.png" type="Texture" id=15]
+[ext_resource path="res://Scripts/ItemSpawns.gd" type="Script" id=16]
 
 [sub_resource type="ArrayMesh" id=1]
 resource_name = "test_room_Cube001"
@@ -74,6 +75,7 @@ surfaces/0 = {
 }
 
 [sub_resource type="BoxShape" id=7]
+extents = Vector3( 1, 0.541656, 1 )
 
 [sub_resource type="CapsuleShape" id=3]
 radius = 3.0
@@ -161,12 +163,27 @@ mesh = SubResource( 6 )
 [node name="StaticBody" type="StaticBody" parent="test_room/table/Node"]
 
 [node name="CollisionShape" type="CollisionShape" parent="test_room/table/Node/StaticBody"]
-transform = Transform( 0.916172, 0, 0, 0, 0.627041, 0, 0, 0, 0.604074, 0, -0.0367414, 0 )
+transform = Transform( 0.916172, 0, 0, 0, 0.337873, 0, 0, 0, 0.604074, 0, -0.211891, 0 )
+shape = SubResource( 7 )
+
+[node name="table2" type="Spatial" parent="test_room"]
+transform = Transform( -4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, -35.7837, 0.185604, -0.402372 )
+
+[node name="Node" type="MeshInstance" parent="test_room/table2"]
+transform = Transform( 8, 0, 0, 0, 8, 0, 0, 0, 8, -0.693689, 5.24924, 0.568037 )
+mesh = SubResource( 6 )
+skeleton = NodePath("../../table2")
+
+[node name="StaticBody" type="StaticBody" parent="test_room/table2/Node"]
+
+[node name="CollisionShape" type="CollisionShape" parent="test_room/table2/Node/StaticBody"]
+transform = Transform( 0.916172, 0, 0, 0, 0.627041, 0, 0, 0, 0.604074, 0, -0.211876, 0 )
 shape = SubResource( 7 )
 
 [node name="Player" type="KinematicBody" parent="."]
 transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 10.6271, 6.17731, 13.4714 )
 script = ExtResource( 4 )
+hover_label_path = NodePath("")
 
 [node name="CollisionShape" type="CollisionShape" parent="Player"]
 transform = Transform( 1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0 )
@@ -177,6 +194,12 @@ transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5.90741, 0 )
 
 [node name="Camera" type="Camera" parent="Player/Head"]
 transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.923017, 0 )
+
+[node name="InteractRay" type="RayCast" parent="Player/Head/Camera"]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.819051 )
+enabled = true
+exclude_parent = false
+cast_to = Vector3( 0, 0, -25 )
 
 [node name="Flashlight" type="Spatial" parent="Player/Head/Camera"]
 transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, -0.362205, 0, 0 )
@@ -211,25 +234,32 @@ skeleton = NodePath("")
 stream = ExtResource( 8 )
 volume_db = 10.0
 
-[node name="InteractRay" type="RayCast" parent="Player/Head/Camera"]
-enabled = true
-cast_to = Vector3( 0, 0, -10 )
-
 [node name="FootstepSound" type="AudioStreamPlayer" parent="Player"]
 stream = ExtResource( 13 )
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource( 4 )
 
-[node name="CanvasLayer" type="CanvasLayer" parent="."]
+[node name="UI" type="CanvasLayer" parent="."]
 
-[node name="FPSLabel" type="Label" parent="CanvasLayer"]
+[node name="HoverLabel" type="Label" parent="UI"]
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+margin_left = -34.0
+margin_top = 38.0
+margin_right = 34.0
+margin_bottom = 52.0
+text = "nanananan"
+
+[node name="FPSLabel" type="Label" parent="UI"]
 margin_left = 10.0
 margin_top = 20.0
 margin_right = 40.0
 margin_bottom = 14.0
 
-[node name="TextureRect" type="TextureRect" parent="CanvasLayer"]
+[node name="Crosshair" type="TextureRect" parent="UI"]
 modulate = Color( 1, 1, 1, 0.588235 )
 anchor_left = 0.5
 anchor_top = 0.5
@@ -243,3 +273,12 @@ rect_scale = Vector2( 0.6, 0.6 )
 mouse_filter = 2
 texture = ExtResource( 15 )
 stretch_mode = 4
+
+[node name="ItemSpawns" type="Spatial" parent="."]
+script = ExtResource( 16 )
+
+[node name="SpawnPoint1" type="Position3D" parent="ItemSpawns"]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 14.7307, 8.82524, -36.1572 )
+
+[node name="SpawnPoint2" type="Position3D" parent="ItemSpawns"]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, -35.6174, 8.90883, -0.833875 )

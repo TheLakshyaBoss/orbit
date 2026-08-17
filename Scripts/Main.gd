@@ -1,6 +1,6 @@
 extends Spatial
 
-onready var fps_label: Label = $CanvasLayer/FPSLabel
+onready var fps_label: Label = $UI/FPSLabel
 
 func _ready() -> void:
 	# Enable fullscreen on launch
